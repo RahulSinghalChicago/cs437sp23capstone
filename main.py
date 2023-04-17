@@ -200,6 +200,7 @@ with dai.Device(pipeline) as device:
     for name in ["color", "detection", "recognition"]:
         queues[name] = device.getOutputQueue(name)
 
+    counter = 0
     while True:
         for name, q in queues.items():
             # Add all msgs (color frames, object detections and face recognitions) to the Sync class.
@@ -211,13 +212,15 @@ with dai.Device(pipeline) as device:
             frame = msgs["color"].getCvFrame()
             dets = msgs["detection"].detections
 
-            for i, detection in enumerate(dets):
-                bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
-                cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
+            if counter % 10 == 0:
+                for i, detection in enumerate(dets):
+                    bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
+                    cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
 
-                features = np.array(msgs["recognition"][i].getFirstLayerFp16())
-                conf, name = facerec.new_recognition(features)
-                text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
+                    features = np.array(msgs["recognition"][i].getFirstLayerFp16())
+                    conf, name = facerec.new_recognition(features)
+                    text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
+            counter += 1
 
             cv2.imshow("color", cv2.resize(frame, (800,800)))
 
