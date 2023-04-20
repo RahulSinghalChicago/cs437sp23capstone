@@ -61,15 +61,18 @@ class FaceRecognition:
                     max_ = conf_
                     label_ = label
 
-        conf.append((max_, label_))
-        name = conf[0] if conf[0][0] >= 0.5 else (1 - conf[0][0], "UNKNOWN")
+        conf.append((max_, label_, False))
+        name = conf[0] if conf[0][0] >= 0.5 else (1 - conf[0][0], "UNKNOWN", True)
         # self.putText(frame, f"name:{name[1]}", (coords[0], coords[1] - 35))
         # self.putText(frame, f"conf:{name[0] * 100:.2f}%", (coords[0], coords[1] - 10))
 
         if name[1] == "UNKNOWN":
-            guid = str(uuid.uuid4())[:6] # Generate a 6-character GUID
+            guid = None
+            if self.name is None:
+                guid = str(uuid.uuid4())[:6] # Generate a 6-character GUID
+                name = (name[0], guid, name[2])
             self.create_db(results, guid)
-        # add this entry to the existing db if 50% < confidence < 90%
+        # add this entry to the existing db if 50% < confidence < 60%
         # FIXME
         return name
 
@@ -226,9 +229,12 @@ with dai.Device(pipeline) as device:
                 bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
                 cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
 
-                if counter % 10 == 0:
+                if counter % 1 == 0:
                     features = np.array(msgs["recognition"][i].getFirstLayerFp16())
-                    conf, name = facerec.new_recognition(features)
+                    conf, name, save_face = facerec.new_recognition(features)
+                    if save_face:
+                        filename = f"{name}_{counter:04d}.jpg"
+                        cv2.imwrite(f"{databases}/{filename}", frame)
                     text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
                 counter += 1
 
