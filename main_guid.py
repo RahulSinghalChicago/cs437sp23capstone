@@ -8,7 +8,14 @@ import numpy as np
 from MultiMsgSync import TwoStageHostSeqSync
 import uuid
 from datetime import datetime
+import boto3
+import socket
 
+# Initialize Boto3 S3
+hostname = socket.gethostname()
+s3_client = boto3.client('s3')
+s3_resource = boto3.resource('s3')
+bucket_name = 'cs437sp23capstone'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-name", "--name", type=str, help="Name of the person for database saving")
@@ -254,6 +261,9 @@ with dai.Device(pipeline) as device:
                         # Crop the output image
                         output_image = frame[y:y+height, x:x+width]
                         cv2.imwrite(f"{databases}/{filename}", output_image)
+                        s3_key = f"{hostname}/{filename}"
+                        encoded_image = cv2.imencode('.jpg', output_image)[1].tostring()
+                        s3_client.put_object(Bucket=bucket_name, Key=s3_key, Body=encoded_image)
                     text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
                 counter += 1
 
