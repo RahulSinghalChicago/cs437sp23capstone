@@ -7,6 +7,8 @@ import depthai as dai
 import numpy as np
 from MultiMsgSync import TwoStageHostSeqSync
 import uuid
+from datetime import datetime
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-name", "--name", type=str, help="Name of the person for database saving")
@@ -214,6 +216,7 @@ with dai.Device(pipeline) as device:
         queues[name] = device.getOutputQueue(name)
 
     counter = 0
+    scale = 1.5
     while True:
         for name, q in queues.items():
             # Add all msgs (color frames, object detections and face recognitions) to the Sync class.
@@ -233,8 +236,24 @@ with dai.Device(pipeline) as device:
                     features = np.array(msgs["recognition"][i].getFirstLayerFp16())
                     conf, name, save_face = facerec.new_recognition(features)
                     if save_face:
-                        filename = f"{name}_{counter:04d}.jpg"
-                        cv2.imwrite(f"{databases}/{filename}", frame)
+                        now = datetime.now()
+                        timestamp = now.strftime("%Y%m%d_%H%M%S")
+                        filename = f"{name}_{timestamp}.jpg"
+                        
+                        center_x = int((bbox[0] + bbox[2]) / 2)
+                        center_y = int((bbox[1] + bbox[3]) / 2)
+
+                        # Calculate the width and height of the output image
+                        width = int(scale * (bbox[2] - bbox[0]))
+                        height = int(scale * (bbox[3] - bbox[1]))
+
+                        # Calculate the coordinates of the top-left corner of the output image
+                        x = max(center_x - int(width/2), 0)
+                        y = max(center_y - int(height/2), 0)
+
+                        # Crop the output image
+                        output_image = frame[y:y+height, x:x+width]
+                        cv2.imwrite(f"{databases}/{filename}", output_image)
                     text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
                 counter += 1
 
