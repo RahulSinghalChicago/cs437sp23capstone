@@ -71,9 +71,12 @@ class FaceRecognition:
                     label_ = label
 
         conf.append((max_, label_, False))
-        name = conf[0] if conf[0][0] >= 0.5 else (1 - conf[0][0], "UNKNOWN", True)
-        # self.putText(frame, f"name:{name[1]}", (coords[0], coords[1] - 35))
-        # self.putText(frame, f"conf:{name[0] * 100:.2f}%", (coords[0], coords[1] - 10))
+        name = conf[0]
+        # Add entry to existing guid db
+        if name[0] <= 0.5 or name[1] is None:
+            name = (1 - name[0], "UNKNOWN", True)
+        elif name[0] <= 0.7:
+            self.create_db(results, name[1])
 
         if name[1] == "UNKNOWN":
             guid = None
@@ -81,8 +84,6 @@ class FaceRecognition:
                 guid = str(uuid.uuid4())[:6] # Generate a 6-character GUID
                 name = (name[0], guid, name[2])
             self.create_db(results, guid)
-        # add this entry to the existing db if 50% < confidence < 60%
-        # FIXME
         return name
 
     def read_db(self, databases_path):
@@ -122,6 +123,8 @@ class FaceRecognition:
             self.labels.append(name)
         print(self.labels)
         self.adding_new = False
+
+#region Pipeline
 
 print("Creating pipeline...")
 pipeline = dai.Pipeline()
@@ -211,6 +214,7 @@ arc_xout = pipeline.create(dai.node.XLinkOut)
 arc_xout.setStreamName('recognition')
 face_rec_nn.out.link(arc_xout.input)
 
+#endregion
 
 with dai.Device(pipeline) as device:
     facerec = FaceRecognition(databases, args.name)
