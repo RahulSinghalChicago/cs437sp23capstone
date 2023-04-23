@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 import boto3
 import socket
+import time
 
 # Initialize Boto3 S3
 hostname = socket.gethostname()
@@ -228,6 +229,8 @@ with dai.Device(pipeline) as device:
 
     counter = 0
     scale = 1.5
+    people_in_frame = {}
+    
     while True:
         for name, q in queues.items():
             # Add all msgs (color frames, object detections and face recognitions) to the Sync class.
@@ -238,7 +241,7 @@ with dai.Device(pipeline) as device:
         if msgs is not None:
             frame = msgs["color"].getCvFrame()
             dets = msgs["detection"].detections
-
+            
             for i, detection in enumerate(dets):
                 bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
                 cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
@@ -246,6 +249,14 @@ with dai.Device(pipeline) as device:
                 if counter % 1 == 0:
                     features = np.array(msgs["recognition"][i].getFirstLayerFp16())
                     conf, name, save_face = facerec.new_recognition(features)
+                    
+                    if save_face is False and name in people_in_frame:
+                        prev_entry_time = people_in_frame[name]
+                        time_diff = time.time() - prev_entry_time
+                        if (time_diff > 5):
+                            print(f"saving a new person {name}")
+                            save_face = True
+                                        
                     if save_face:
                         now = datetime.now()
                         timestamp = now.strftime("%Y%m%d_%H%M%S")
@@ -271,6 +282,7 @@ with dai.Device(pipeline) as device:
                     text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
                 counter += 1
 
+            people_in_frame[name] = time.time()
             # cv2.imshow("color", cv2.resize(frame, (800,800)))
             cv2.imshow("color", frame)
 
