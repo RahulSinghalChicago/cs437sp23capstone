@@ -11,6 +11,7 @@ from datetime import datetime
 import boto3
 import socket
 import time
+from collections import defaultdict
 
 # Initialize Boto3 S3
 hostname = socket.gethostname()
@@ -75,7 +76,8 @@ class FaceRecognition:
         name = conf[0]
         # Add entry to existing guid db
         if name[0] <= 0.5 or name[1] is None:
-            name = (1 - name[0], "UNKNOWN", True)
+            name = (1 - name[0], "UNKNOWN", False)
+#            name = (1 - name[0], "UNKNOWN", True)
         elif name[0] <= 0.7:
             self.create_db(results, name[1])
 
@@ -230,6 +232,7 @@ with dai.Device(pipeline) as device:
     counter = 0
     scale = 1.5
     people_in_frame = {}
+    detection_count = defaultdict(int)
     
     while True:
         for name, q in queues.items():
@@ -249,6 +252,7 @@ with dai.Device(pipeline) as device:
                 if counter % 1 == 0:
                     features = np.array(msgs["recognition"][i].getFirstLayerFp16())
                     conf, name, save_face = facerec.new_recognition(features)
+                    detection_count[name] += 1
                     
                     if save_face is False and name in people_in_frame:
                         prev_entry_time = people_in_frame[name]
@@ -256,7 +260,12 @@ with dai.Device(pipeline) as device:
                         if (time_diff > 5):
                             print(f"saving a new person {name}")
                             save_face = True
-                                        
+                            detection_count[name] = 0
+                            
+                    detection_count[name] += 1
+                    if detection_count[name] == 30:
+                        save_face = True                    
+                    
                     if save_face:
                         now = datetime.now()
                         timestamp = now.strftime("%Y%m%d_%H%M%S")
