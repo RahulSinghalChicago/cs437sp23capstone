@@ -130,6 +130,10 @@ class FaceRecognition:
         for label in self.labels:
             with np.load(f"{databases_path}/{label}.npz") as db:
                 self.db_dic[label] = [db[j] for j in db.files]
+                
+        result = ', '.join([f"{key}:{len(value)}" for key, value in self.db_dic.items()])
+        print(f"[{result}]")
+
 
     def putText(self, frame, text, coords):
         cv2.putText(
