@@ -17,6 +17,9 @@ class TwoStageHostSeqSync:
         if "recognition" not in self.msgs[seq]:
             self.msgs[seq]["recognition"] = [] # Create recognition array
 
+        if "recognition" not in self.msgs[seq]:
+            self.msgs[seq]["recognition"] = [] # Create recognition array
+
         if name == "recognition":
             # Append recognition msgs to an array
             self.msgs[seq]["recognition"].append(msg)

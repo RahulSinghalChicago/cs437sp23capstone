@@ -13,6 +13,8 @@ import socket
 import time
 from collections import defaultdict
 
+emotions = ['neutral', 'happy', 'sad', 'surprise', 'anger']
+
 # Initialize Boto3 S3
 hostname = socket.gethostname()
 s3_client = boto3.client('s3')
@@ -217,6 +219,23 @@ arc_xout = pipeline.create(dai.node.XLinkOut)
 arc_xout.setStreamName('recognition')
 face_rec_nn.out.link(arc_xout.input)
 
+print("Creating emotion recognition ImageManip/NN")
+
+emotion_manip = pipeline.create(dai.node.ImageManip)
+emotion_manip.initialConfig.setResize(64,64)
+emotion_manip.inputConfig.setWaitForMessage(True)
+
+script.outputs['manip3_cfg'].link(emotion_manip.inputConfig)
+script.outputs['manip3_img'].link(emotion_manip.inputImage)
+
+emotion_nn = pipeline.create_nn(dai.node.NeuralNetwork)
+emotion_nn.setBlobPath(blobconverter.from_zoo('emotions-recognition-retail-0003', shaves=6))
+emotion_manip.out.link(emotion_nn.input)
+
+emotion_recognition_xout = pipeline.create(dai.node.XlinkOut)
+emotion_recognition_xout.setStreamName("emo_recognition")
+emotion_nn.out.link(emotion_recognition_xout.input)
+
 #endregion
 
 with dai.Device(pipeline) as device:
@@ -261,9 +280,12 @@ with dai.Device(pipeline) as device:
                             print(f"saving a new person {name}")
                             save_face = True
                             detection_count[name] = 0
-                            
-                    detection_count[name] += 1
-                    if detection_count[name] == 30:
+
+                    if detection_count[name] > 30:
+                        pass
+                    elif detection_count[name] < 30:
+                        detection_count[name] += 1
+                    else:
                         save_face = True                    
                     
                     if save_face:

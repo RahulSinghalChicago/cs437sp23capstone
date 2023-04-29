@@ -90,3 +90,12 @@ while True:
 
         node.io['manip2_cfg'].send(cfg)
         node.io['manip2_img'].send(img)
+        
+        cfg = ImageManipConfig()
+        cfg.setCropRotatedRect(rr, True)
+        cfg.setResize(64, 64)
+        cfg.setKeepAspectRatio(False)
+
+        node.io['manip3_cfg'].send(cfg)
+        node.io['manip3_img'].send(img)
+        
