@@ -36,12 +36,15 @@ parser.add_argument(
     "--time_new_det", type=int, default=5, help="Time in seconds for a new detection"
 )
 parser.add_argument(
-    "--skip_init_det", type=int, default=10,
+    "--skip_init_det",
+    type=int,
+    default=10,
     help="Number of detections to skip before reporting this notification",
 )
 
 args = parser.parse_args()
 print(args)
+
 
 def frame_norm(frame, bbox):
     normVals = np.full(len(bbox), frame.shape[0])
@@ -144,7 +147,7 @@ class FaceRecognition:
         else:
             print("Reached unexpected edge case")
             return
-        print("Saving face... ", name)
+        print("Saving new embedding... ", name)
         try:
             with np.load(f"{databases}/{name}.npz") as db:
                 db_ = [db[j] for j in db.files][:]
@@ -277,7 +280,7 @@ with dai.Device(pipeline) as device:
     skip_every_show = args.skip_every_show
     skip_init_det = args.skip_init_det
     display_size = args.display_size
-
+    time_new_det = args.time_new_det
 
     while True:
         for name, q in queues.items():
@@ -307,8 +310,7 @@ with dai.Device(pipeline) as device:
                     if save_face is False and name in people_in_frame:
                         prev_entry_time = people_in_frame[name]
                         time_diff = time.time() - prev_entry_time
-                        if time_diff > 5:
-                            print(f"saving a new person {name}")
+                        if time_diff > time_new_det:
                             save_face = True
                             detection_count[name] = 0
 
@@ -317,6 +319,7 @@ with dai.Device(pipeline) as device:
                         save_face = True
 
                     if save_face:
+                        print(f"Saving new detection {name}")
                         now = datetime.now()
                         timestamp = now.strftime("%Y%m%d_%H%M%S")
                         filename = f"{name}_{timestamp}.jpg"
