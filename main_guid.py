@@ -35,7 +35,7 @@ parser.add_argument(
 parser.add_argument(
     "--time_new_det", type=int, default=5, help="Time in seconds for a new detection"
 )
-parser.add_arugment(
+parser.add_argument(
     "--skip_init_det", type=int, default=10,
     help="Number of detections to skip before reporting this notification",
 )
