@@ -30,6 +30,8 @@ parser.add_argument('--display_size', type=str, default='400',
 
 args = parser.parse_args()
 print(args)
+display_size = int(args.display_size)
+
 
 def frame_norm(frame, bbox):
     normVals = np.full(len(bbox), frame.shape[0])
@@ -240,7 +242,8 @@ with dai.Device(pipeline) as device:
     scale = 1.5
     people_in_frame = {}
     detection_count = defaultdict(int)
-    skip_every = 2
+    skip_every_det = int(args.skip_every_det)
+    skip_every_show = int(args.skip_every_show)
     
     while True:
         for name, q in queues.items():
@@ -257,7 +260,7 @@ with dai.Device(pipeline) as device:
                 bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
                 cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
 
-                if counter % args.skip_every_det == 0:
+                if counter % skip_every_det == 0:
                     features = np.array(msgs["recognition"][i].getFirstLayerFp16())
                     conf, name, save_face = facerec.new_recognition(features)
                     detection_count[name] += 1
@@ -300,8 +303,8 @@ with dai.Device(pipeline) as device:
                 counter += 1
 
             people_in_frame[name] = time.time()
-            if counter % args.skip_every_show == 0:
-                cv2.imshow("color", cv2.resize(frame, (args.display_size,args.display_size)))
+            if counter % skip_every_show == 0:
+                cv2.imshow("color", cv2.resize(frame, (display_size,display_size)))
 
         if cv2.waitKey(1) == ord('q'):
             break
