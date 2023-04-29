@@ -27,10 +27,10 @@ parser.add_argument(
     "--skip_every_det", type=int, default=1, help="Skip detection every N frames"
 )
 parser.add_argument(
-    "--skip_every_show", type=int, default=10, help="Skip showing frames every N frames"
+    "--skip_every_show", type=int, default=1, help="Skip showing frames every N frames"
 )
 parser.add_argument(
-    "--display_size", type=int, default=800, help="Display size in pixels (square)"
+    "--display_size", type=int, default=400, help="Display size in pixels (square)"
 )
 parser.add_argument(
     "--time_new_det", type=int, default=5, help="Time in seconds for a new detection"
