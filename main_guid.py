@@ -15,33 +15,45 @@ from collections import defaultdict
 
 # Initialize Boto3 S3
 hostname = socket.gethostname()
-s3_client = boto3.client('s3')
-s3_resource = boto3.resource('s3')
-bucket_name = 'cs437sp23capstone'
+s3_client = boto3.client("s3")
+s3_resource = boto3.resource("s3")
+bucket_name = "cs437sp23capstone"
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-name", "--name", type=str, help="Name of the person for database saving")
-parser.add_argument('--skip_every_det', type=int, default=1,
-                    help='Skip detection every N frames')
-parser.add_argument('--skip_every_show', type=int, default=10,
-                    help='Skip showing frames every N frames')
-parser.add_argument('--display_size', type=str, default='400',
-                    help='Display size in pixels (square)')
+parser.add_argument(
+    "-name", "--name", type=str, help="Name of the person for database saving"
+)
+parser.add_argument(
+    "--skip_every_det", type=int, default=1, help="Skip detection every N frames"
+)
+parser.add_argument(
+    "--skip_every_show", type=int, default=10, help="Skip showing frames every N frames"
+)
+parser.add_argument(
+    "--display_size", type=int, default=800, help="Display size in pixels (square)"
+)
+parser.add_argument(
+    "--time_new_det", type=int, default=5, help="Time in seconds for a new detection"
+)
+parser.add_arugment(
+    "--skip_init_det", type=int, default=10,
+    help="Number of detections to skip before reporting this notification",
+)
 
 args = parser.parse_args()
 print(args)
-display_size = int(args.display_size)
-
 
 def frame_norm(frame, bbox):
     normVals = np.full(len(bbox), frame.shape[0])
     normVals[::2] = frame.shape[1]
     return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
+
 VIDEO_SIZE = (1072, 1072)
 databases = "databases"
 if not os.path.exists(databases):
     os.mkdir(databases)
+
 
 class TextHelper:
     def __init__(self) -> None:
@@ -49,9 +61,15 @@ class TextHelper:
         self.color = (255, 255, 255)
         self.text_type = cv2.FONT_HERSHEY_SIMPLEX
         self.line_type = cv2.LINE_AA
+
     def putText(self, frame, text, coords):
-        cv2.putText(frame, text, coords, self.text_type, 1.0, self.bg_color, 4, self.line_type)
-        cv2.putText(frame, text, coords, self.text_type, 1.0, self.color, 2, self.line_type)
+        cv2.putText(
+            frame, text, coords, self.text_type, 1.0, self.bg_color, 4, self.line_type
+        )
+        cv2.putText(
+            frame, text, coords, self.text_type, 1.0, self.color, 2, self.line_type
+        )
+
 
 class FaceRecognition:
     def __init__(self, db_path, name) -> None:
@@ -86,14 +104,14 @@ class FaceRecognition:
         # Add entry to existing guid db
         if name[0] <= 0.5 or name[1] is None:
             name = (1 - name[0], "UNKNOWN", False)
-#            name = (1 - name[0], "UNKNOWN", True)
+        #            name = (1 - name[0], "UNKNOWN", True)
         elif name[0] <= 0.7:
             self.create_db(results, name[1])
 
         if name[1] == "UNKNOWN":
             guid = None
             if self.name is None:
-                guid = str(uuid.uuid4())[:6] # Generate a 6-character GUID
+                guid = str(uuid.uuid4())[:6]  # Generate a 6-character GUID
                 name = (name[0], guid, name[2])
             self.create_db(results, guid)
         return name
@@ -111,10 +129,14 @@ class FaceRecognition:
                 self.db_dic[label] = [db[j] for j in db.files]
 
     def putText(self, frame, text, coords):
-        cv2.putText(frame, text, coords, self.text_type, 1, self.bg_color, 4, self.line_type)
-        cv2.putText(frame, text, coords, self.text_type, 1, self.color, 1, self.line_type)
+        cv2.putText(
+            frame, text, coords, self.text_type, 1, self.bg_color, 4, self.line_type
+        )
+        cv2.putText(
+            frame, text, coords, self.text_type, 1, self.color, 1, self.line_type
+        )
 
-    def create_db(self, results, guid = None):
+    def create_db(self, results, guid=None):
         if guid is not None:
             name = guid
         elif self.name is not None:
@@ -122,7 +144,7 @@ class FaceRecognition:
         else:
             print("Reached unexpected edge case")
             return
-        print('Saving face... ', name)
+        print("Saving face... ", name)
         try:
             with np.load(f"{databases}/{name}.npz") as db:
                 db_ = [db[j] for j in db.files][:]
@@ -136,7 +158,8 @@ class FaceRecognition:
         print(self.labels)
         self.adding_new = False
 
-#region Pipeline
+
+# region Pipeline
 
 print("Creating pipeline...")
 pipeline = dai.Pipeline()
@@ -151,7 +174,7 @@ cam.setInterleaved(False)
 cam.setBoardSocket(dai.CameraBoardSocket.RGB)
 
 host_face_out = pipeline.create(dai.node.XLinkOut)
-host_face_out.setStreamName('color')
+host_face_out.setStreamName("color")
 cam.video.link(host_face_out.input)
 
 # ImageManip as a workaround to have more frames in the pool.
@@ -161,7 +184,7 @@ cam.video.link(host_face_out.input)
 copy_manip = pipeline.create(dai.node.ImageManip)
 cam.preview.link(copy_manip.inputImage)
 copy_manip.setNumFramesPool(20)
-copy_manip.setMaxOutputFrameSize(1072*1072*3)
+copy_manip.setMaxOutputFrameSize(1072 * 1072 * 3)
 
 # ImageManip that will crop the frame before sending it to the Face detection NN node
 face_det_manip = pipeline.create(dai.node.ImageManip)
@@ -172,7 +195,9 @@ copy_manip.out.link(face_det_manip.inputImage)
 print("Creating Face Detection Neural Network...")
 face_det_nn = pipeline.create(dai.node.MobileNetDetectionNetwork)
 face_det_nn.setConfidenceThreshold(0.5)
-face_det_nn.setBlobPath(blobconverter.from_zoo(name="face-detection-retail-0004", shaves=6))
+face_det_nn.setBlobPath(
+    blobconverter.from_zoo(name="face-detection-retail-0004", shaves=6)
+)
 # Link Face ImageManip -> Face detection NN node
 face_det_manip.out.link(face_det_nn.input)
 
@@ -185,11 +210,11 @@ face_det_nn.out.link(face_det_xout.input)
 script = pipeline.create(dai.node.Script)
 script.setProcessor(dai.ProcessorType.LEON_CSS)
 
-face_det_nn.out.link(script.inputs['face_det_in'])
+face_det_nn.out.link(script.inputs["face_det_in"])
 # We also interested in sequence number for syncing
-face_det_nn.passthrough.link(script.inputs['face_pass'])
+face_det_nn.passthrough.link(script.inputs["face_pass"])
 
-copy_manip.out.link(script.inputs['preview'])
+copy_manip.out.link(script.inputs["preview"])
 
 with open("script.py", "r") as f:
     script.setScript(f.read())
@@ -199,15 +224,17 @@ print("Creating Head pose estimation NN")
 headpose_manip = pipeline.create(dai.node.ImageManip)
 headpose_manip.initialConfig.setResize(60, 60)
 headpose_manip.setWaitForConfigInput(True)
-script.outputs['manip_cfg'].link(headpose_manip.inputConfig)
-script.outputs['manip_img'].link(headpose_manip.inputImage)
+script.outputs["manip_cfg"].link(headpose_manip.inputConfig)
+script.outputs["manip_img"].link(headpose_manip.inputImage)
 
 headpose_nn = pipeline.create(dai.node.NeuralNetwork)
-headpose_nn.setBlobPath(blobconverter.from_zoo(name="head-pose-estimation-adas-0001", shaves=6))
+headpose_nn.setBlobPath(
+    blobconverter.from_zoo(name="head-pose-estimation-adas-0001", shaves=6)
+)
 headpose_manip.out.link(headpose_nn.input)
 
-headpose_nn.out.link(script.inputs['headpose_in'])
-headpose_nn.passthrough.link(script.inputs['headpose_pass'])
+headpose_nn.out.link(script.inputs["headpose_in"])
+headpose_nn.passthrough.link(script.inputs["headpose_pass"])
 
 print("Creating face recognition ImageManip/NN")
 
@@ -215,18 +242,22 @@ face_rec_manip = pipeline.create(dai.node.ImageManip)
 face_rec_manip.initialConfig.setResize(112, 112)
 face_rec_manip.inputConfig.setWaitForMessage(True)
 
-script.outputs['manip2_cfg'].link(face_rec_manip.inputConfig)
-script.outputs['manip2_img'].link(face_rec_manip.inputImage)
+script.outputs["manip2_cfg"].link(face_rec_manip.inputConfig)
+script.outputs["manip2_img"].link(face_rec_manip.inputImage)
 
 face_rec_nn = pipeline.create(dai.node.NeuralNetwork)
-face_rec_nn.setBlobPath(blobconverter.from_zoo(name="face-recognition-arcface-112x112", zoo_type="depthai", shaves=6))
+face_rec_nn.setBlobPath(
+    blobconverter.from_zoo(
+        name="face-recognition-arcface-112x112", zoo_type="depthai", shaves=6
+    )
+)
 face_rec_manip.out.link(face_rec_nn.input)
 
 arc_xout = pipeline.create(dai.node.XLinkOut)
-arc_xout.setStreamName('recognition')
+arc_xout.setStreamName("recognition")
 face_rec_nn.out.link(arc_xout.input)
 
-#endregion
+# endregion
 
 with dai.Device(pipeline) as device:
     facerec = FaceRecognition(databases, args.name)
@@ -242,9 +273,12 @@ with dai.Device(pipeline) as device:
     scale = 1.5
     people_in_frame = {}
     detection_count = defaultdict(int)
-    skip_every_det = int(args.skip_every_det)
-    skip_every_show = int(args.skip_every_show)
-    
+    skip_every_det = args.skip_every_det
+    skip_every_show = args.skip_every_show
+    skip_init_det = args.skip_init_det
+    display_size = args.display_size
+
+
     while True:
         for name, q in queues.items():
             # Add all msgs (color frames, object detections and face recognitions) to the Sync class.
@@ -255,33 +289,38 @@ with dai.Device(pipeline) as device:
         if msgs is not None:
             frame = msgs["color"].getCvFrame()
             dets = msgs["detection"].detections
-            
+
             for i, detection in enumerate(dets):
-                bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
-                cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
+                bbox = frame_norm(
+                    frame,
+                    (detection.xmin, detection.ymin, detection.xmax, detection.ymax),
+                )
+                cv2.rectangle(
+                    frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2
+                )
 
                 if counter % skip_every_det == 0:
                     features = np.array(msgs["recognition"][i].getFirstLayerFp16())
                     conf, name, save_face = facerec.new_recognition(features)
                     detection_count[name] += 1
-                    
+
                     if save_face is False and name in people_in_frame:
                         prev_entry_time = people_in_frame[name]
                         time_diff = time.time() - prev_entry_time
-                        if (time_diff > 5):
+                        if time_diff > 5:
                             print(f"saving a new person {name}")
                             save_face = True
                             detection_count[name] = 0
-                            
+
                     detection_count[name] += 1
-                    if detection_count[name] == 30:
-                        save_face = True                    
-                    
+                    if detection_count[name] == skip_init_det:
+                        save_face = True
+
                     if save_face:
                         now = datetime.now()
                         timestamp = now.strftime("%Y%m%d_%H%M%S")
                         filename = f"{name}_{timestamp}.jpg"
-                        
+
                         center_x = int((bbox[0] + bbox[2]) / 2)
                         center_y = int((bbox[1] + bbox[3]) / 2)
 
@@ -290,21 +329,25 @@ with dai.Device(pipeline) as device:
                         height = int(scale * (bbox[3] - bbox[1]))
 
                         # Calculate the coordinates of the top-left corner of the output image
-                        x = max(center_x - int(width/2), 0)
-                        y = max(center_y - int(height/2), 0)
+                        x = max(center_x - int(width / 2), 0)
+                        y = max(center_y - int(height / 2), 0)
 
                         # Crop the output image
-                        output_image = frame[y:y+height, x:x+width]
+                        output_image = frame[y : y + height, x : x + width]
                         cv2.imwrite(f"{databases}/{filename}", output_image)
                         s3_key = f"{hostname}/{filename}"
-                        encoded_image = cv2.imencode('.jpg', output_image)[1].tostring()
-                        s3_client.put_object(Bucket=bucket_name, Key=s3_key, Body=encoded_image)
-                    text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
+                        encoded_image = cv2.imencode(".jpg", output_image)[1].tostring()
+                        s3_client.put_object(
+                            Bucket=bucket_name, Key=s3_key, Body=encoded_image
+                        )
+                    text.putText(
+                        frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10, bbox[1] + 35)
+                    )
                 counter += 1
 
             people_in_frame[name] = time.time()
             if counter % skip_every_show == 0:
-                cv2.imshow("color", cv2.resize(frame, (display_size,display_size)))
+                cv2.imshow("color", cv2.resize(frame, (display_size, display_size)))
 
-        if cv2.waitKey(1) == ord('q'):
+        if cv2.waitKey(1) == ord("q"):
             break
