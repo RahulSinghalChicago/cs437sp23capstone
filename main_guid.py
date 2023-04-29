@@ -41,6 +41,9 @@ parser.add_argument(
     default=10,
     help="Number of detections to skip before reporting this notification",
 )
+parser.add_argument(
+    "--show_display", type=bool, default=True, help="Turn off the display window"
+)
 
 args = parser.parse_args()
 print(args)
@@ -353,7 +356,7 @@ with dai.Device(pipeline) as device:
                 counter += 1
 
             people_in_frame[name] = time.time()
-            if counter % skip_every_show == 0:
+            if args.show_display and counter % skip_every_show == 0:
                 cv2.imshow("color", cv2.resize(frame, (display_size, display_size)))
 
         if cv2.waitKey(1) == ord("q"):
