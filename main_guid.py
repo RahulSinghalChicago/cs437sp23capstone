@@ -41,9 +41,8 @@ parser.add_argument(
     default=10,
     help="Number of detections to skip before reporting this notification",
 )
-parser.add_argument(
-    "--show_display", type=bool, default=True, help="Turn off the display window"
-)
+parser.add_argument('--show_display', action='store_false', default=True,
+                    help='Disable display (default: True)')
 
 args = parser.parse_args()
 print(args)
