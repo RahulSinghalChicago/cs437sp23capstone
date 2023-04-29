@@ -41,8 +41,10 @@ parser.add_argument(
     default=10,
     help="Number of detections to skip before reporting this notification",
 )
-parser.add_argument('--show_display', action='store_false', default=True,
-                    help='Disable display (default: True)')
+parser.add_argument(
+    "--no-display", dest="show_display", action="store_false", help="Disable display"
+)
+
 
 args = parser.parse_args()
 print(args)
@@ -132,10 +134,11 @@ class FaceRecognition:
         for label in self.labels:
             with np.load(f"{databases_path}/{label}.npz") as db:
                 self.db_dic[label] = [db[j] for j in db.files]
-                
-        result = ', '.join([f"{key}:{len(value)}" for key, value in self.db_dic.items()])
-        print(f"[{result}]")
 
+        result = ", ".join(
+            [f"{key}:{len(value)}" for key, value in self.db_dic.items()]
+        )
+        print(f"[{result}]")
 
     def putText(self, frame, text, coords):
         cv2.putText(
