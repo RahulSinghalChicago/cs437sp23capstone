@@ -1,0 +1,21 @@
+{
+    "appName": "capstoneflutter",
+    "roleName": "pinpointLambdaRole94e41919",
+    "cloudformationPolicyName": "cloudformationPolicy94e41919",
+    "cloudWatchPolicyName": "cloudWatchPolicy94e41919",
+    "pinpointPolicyName": "pinpointPolicy94e41919",
+    "authPolicyName": "pinpoint_amplify_94e41919",
+    "unauthPolicyName": "pinpoint_amplify_94e41919",
+    "authRoleName": {
+        "Ref": "AuthRoleName"
+    },
+    "unauthRoleName": {
+        "Ref": "UnauthRoleName"
+    },
+    "authRoleArn": {
+        "Fn::GetAtt": [
+            "AuthRole",
+            "Arn"
+        ]
+    }
+}

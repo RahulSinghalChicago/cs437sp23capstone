@@ -1,0 +1,17 @@
+{
+  "resourceName": "capstonebucket",
+  "policyUUID": "8605beb8",
+  "bucketName": "capstone-sp23",
+  "storageAccess": "authAndGuest",
+  "guestAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "groupAccess": {}
+}

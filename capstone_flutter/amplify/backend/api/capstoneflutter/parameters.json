@@ -1,0 +1,11 @@
+{
+  "AppSyncApiName": "capstoneflutter",
+  "DynamoDBBillingMode": "PAY_PER_REQUEST",
+  "DynamoDBEnableServerSideEncryption": false,
+  "AuthCognitoUserPoolId": {
+    "Fn::GetAtt": [
+      "authcapstoneflutter0522232f",
+      "Outputs.UserPoolId"
+    ]
+  }
+}
