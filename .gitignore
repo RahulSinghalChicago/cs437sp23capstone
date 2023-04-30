@@ -8,3 +8,4 @@ capstone_flutter/.idea/*
 capstone_flutter/android/.gradle
 capstone_flutter/build/*
 capstone_flutter/windows/*
+s3/
