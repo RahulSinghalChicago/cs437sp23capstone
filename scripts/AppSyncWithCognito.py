@@ -8,11 +8,12 @@ appsync = session.client('appsync')
 s3 = boto3.client('s3')
 cognito = boto3.client('cognito-idp')
 api_id = 'sxx7yrdqubdovazvfekepn5apm'
+type_name = 'CapImage'
+id_field_name = 'name'
 user_pool_id = 'us-east-1_wiLTn7O0L'
+# client_id = 'r4nq1tehhec22v430kj5kn4ra'
 client_id = '479gk3qmjc7rontvtr4pt6qk0l'
 
-#Lambda to process request from S3 bucket update and update entry in DynamoDB
-#
 def lambda_handler(event, context):
     # Get the bucket and key from the S3 event
     bucket = event['Records'][0]['s3']['bucket']['name']
@@ -34,59 +35,47 @@ def lambda_handler(event, context):
     
     # Check if the item exists in AppSync
     query = '''
-        query GetCapImage{
-            getCapImage(id: "%s"){
+        query GetItem($id: ID!) {
+            getItem(id: $id) {
                 id
-                name
-                path
             }
         }
     '''
-    
-    filename = key.split("/")[-1]
-    tokens = filename.split('_')
-    
-    if len(tokens) < 3:
-        print(f'key is not valid {key}')
-        return
-    
-    print(f'Filename: {filename}, {key} ')
-    id = tokens[0]
-    date = tokens[1]
-    time = tokens[2]
-    
-    query = query % id
-    
-    print("query: ", query)
+    variables = {'id': 'name'}
+    headers = {'Authorization': access_token}
 
+   # Check if the item exists in AppSync
+    query = '''
+        query GetItem($id: ID!) {
+            getItem(id: $id) {
+                id
+            }
+        }
+    '''
+    variables = {'id': 'name'}
     headers = {'Authorization': access_token}
     url = 'https://bq5yzurrcfgs7o5xbqhmunq6oq.appsync-api.us-east-1.amazonaws.com/graphql'
     response = requests.post(
         url,
-        json={'query': query},
+        json={'query': query, 'variables': variables},
         headers=headers
     )
+    response_data = response.json().get('data', {}).get('getItem')
     
-    print(response.content)
-    response_data = response.json().get('data', {}).get('getCapImage')
-    
-    print(response_data)
     # Update or insert the item
     if response_data:
         query = '''
-            mutation UpdateCapImage($input: UpdateCapImageInput!) {
-                updateCapImage(input: $input) {
+            mutation UpdateItem($input: UpdateItemInput!) {
+                updateItem(input: $input) {
                     id
-                    name
-                    path
                 }
             }
         '''
         variables = {
             'input': {
-                'id': response_data['id'],
-                'name': response_data['name'],
-                'path': key
+                'id': data[id_field_name],
+                'attribute1': data['attribute1'],
+                'attribute2': data['attribute2']
             }
         }
         response = requests.post(
@@ -94,29 +83,20 @@ def lambda_handler(event, context):
             json={'query': query, 'variables': variables},
             headers=headers
         )
-        
-        print(response.content)
         print('Item updated in AppSync')
     else:
-        
-        data = {
-            'id': id,
-            'name': 'UNKNOWN',
-            'path': key
-        }
-        
         query = '''
-            mutation CreateCapImage($input: CreateCapImageInput!) {
-                createCapImage(input: $input) {
+            mutation CreateItem($input: CreateItemInput!) {
+                createItem(input: $input) {
                     id
                 }
             }
         '''
         variables = {
             'input': {
-                'id': data['id'],
-                'name': data['name'],
-                'path': data['path']
+                'id': data[id_field_name],
+                'attribute1': data['attribute1'],
+                'attribute2': data['attribute2']
             }
         }
         response = requests.post(
@@ -124,5 +104,4 @@ def lambda_handler(event, context):
             json={'query': query, 'variables': variables},
             headers=headers
         )
-        print(response.content)
         print('Item inserted into AppSync')
