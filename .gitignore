@@ -3,3 +3,4 @@ venv/
 *.npz
 __pycache__/
 databases/
+s3/
